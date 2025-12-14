@@ -83,13 +83,19 @@ export const DriveConnect: React.FC<DriveConnectProps> = ({ files, setFiles }) =
   };
 
   const connectGithub = async () => {
-      if (!githubRepo.includes('/')) {
-          alert("Formato inválido. Use usuario/repositorio (ex: facebook/react)");
+      // Limpeza da URL para aceitar "https://github.com/user/repo" ou "user/repo"
+      let cleanRepo = githubRepo.trim();
+      cleanRepo = cleanRepo.replace('https://github.com/', '').replace('http://github.com/', '');
+      if (cleanRepo.endsWith('.git')) cleanRepo = cleanRepo.slice(0, -4);
+      if (cleanRepo.endsWith('/')) cleanRepo = cleanRepo.slice(0, -1);
+
+      if (!cleanRepo.includes('/')) {
+          alert("Formato inválido. Use usuario/repositorio (ex: gabrielkendy/AGENTE-IA-GOOGLE)");
           return;
       }
 
       setIsConnecting('github');
-      const [owner, repo] = githubRepo.split('/');
+      const [owner, repo] = cleanRepo.split('/');
 
       try {
           // 1. Fetch README
@@ -192,7 +198,7 @@ export const DriveConnect: React.FC<DriveConnectProps> = ({ files, setFiles }) =
                             <div className="space-y-2">
                                 <input 
                                     type="text" 
-                                    placeholder="user/repo (ex: facebook/react)"
+                                    placeholder="user/repo (ex: gabrielkendy/projeto)"
                                     value={githubRepo}
                                     onChange={(e) => setGithubRepo(e.target.value)}
                                     className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-xs focus:border-primary-500 outline-none"
