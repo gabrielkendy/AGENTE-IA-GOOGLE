@@ -70,6 +70,18 @@ export const DriveConnect: React.FC<DriveConnectProps> = ({ files, setFiles }) =
       setFileName('');
   };
 
+  // Função auxiliar para decodificar Base64 com suporte a UTF-8 (Acentos)
+  const decodeBase64UTF8 = (str: string) => {
+      try {
+        return new TextDecoder('utf-8').decode(
+            Uint8Array.from(atob(str), c => c.charCodeAt(0))
+        );
+      } catch (e) {
+          console.error("Erro decodificando UTF-8", e);
+          return atob(str); // Fallback
+      }
+  };
+
   const connectGithub = async () => {
       if (!githubRepo.includes('/')) {
           alert("Formato inválido. Use usuario/repositorio (ex: facebook/react)");
@@ -84,13 +96,15 @@ export const DriveConnect: React.FC<DriveConnectProps> = ({ files, setFiles }) =
           const readmeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/readme`);
           if (readmeRes.ok) {
               const data = await readmeRes.json();
-              const content = atob(data.content); // Decode Base64
-              addFile(`${repo}_README.md`, content, 'md', 'github');
+              if (data.content) {
+                  const content = decodeBase64UTF8(data.content);
+                  addFile(`${repo}_README.md`, content, 'md', 'github');
+              }
           } else {
-              console.warn("README não encontrado");
+              console.warn("README não encontrado ou repositório privado.");
           }
 
-          // 2. Fetch Issues (Optional - limit to 5 recent)
+          // 2. Fetch Issues (Limitado a 5 recentes)
           const issuesRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues?state=open&per_page=5`);
           if (issuesRes.ok) {
               const issues = await issuesRes.json();
@@ -99,9 +113,9 @@ export const DriveConnect: React.FC<DriveConnectProps> = ({ files, setFiles }) =
           }
 
           setGithubRepo('');
-          alert(`Repositório ${repo} conectado com sucesso!`);
+          alert(`Repositório ${repo} conectado! Vá ao chat para conversar sobre ele.`);
       } catch (error) {
-          alert("Erro ao conectar GitHub. Verifique o nome do repositório.");
+          alert("Erro ao conectar GitHub. Verifique se o repositório é público e o nome está correto.");
           console.error(error);
       } finally {
           setIsConnecting(null);
