@@ -14,22 +14,54 @@ enum View { CHAT = 'chat', KANBAN = 'kanban', CONFIG = 'config', DRIVE = 'drive'
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<View>(View.CHAT);
-  const [agents, setAgents] = useState<Agent[]>(() => JSON.parse(localStorage.getItem('agents') || JSON.stringify(DEFAULT_AGENTS)));
+  
+  // Safely load Agents with error handling
+  const [agents, setAgents] = useState<Agent[]>(() => {
+    try {
+        const saved = localStorage.getItem('agents');
+        return saved ? JSON.parse(saved) : DEFAULT_AGENTS;
+    } catch (e) {
+        console.error("Erro ao carregar agentes do cache, resetando para padrão.", e);
+        return DEFAULT_AGENTS;
+    }
+  });
+
   const [activeAgentId, setActiveAgentId] = useState<string>(DEFAULT_AGENTS[0].id);
   const [driveFiles, setFiles] = useState<DriveFile[]>([]);
   const [mediaList, setMediaList] = useState<GeneratedMedia[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  
+  // Safely load Tasks with error handling
+  const [tasks, setTasks] = useState<Task[]>(() => {
+      try {
+          const saved = localStorage.getItem('tasks');
+          if (saved) {
+             const parsed = JSON.parse(saved);
+             return parsed.map((t: any) => ({
+                 ...t,
+                 createdAt: new Date(t.createdAt),
+                 scheduledDate: t.scheduledDate ? new Date(t.scheduledDate) : undefined
+             }));
+          }
+          return [];
+      } catch (e) {
+          console.error("Erro ao carregar tarefas do cache.", e);
+          return [];
+      }
+  });
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [messages, setMessages] = useState<TeamMessage[]>([]);
 
   useEffect(() => { localStorage.setItem('agents', JSON.stringify(agents)); }, [agents]);
+  useEffect(() => { localStorage.setItem('tasks', JSON.stringify(tasks)); }, [tasks]);
 
   const addNotification = (title: string, message: string, type: any) => setNotifications(p => [...p, { id: Date.now().toString(), title, message, type, read: false, timestamp: new Date() }]);
+  
   const activeAgent = activeAgentId === 'team-general' ? { ...DEFAULT_AGENTS[0], id: 'team-general', name: 'Time Completo', role: AgentRole.MANAGER } : (agents.find(a => a.id === activeAgentId) || agents[0]);
 
   return (
     <div className="flex h-screen w-full bg-gray-950 text-white overflow-hidden font-sans">
-      <aside className="w-20 lg:w-64 bg-gray-900 border-r border-gray-800 flex flex-col justify-between">
+      <aside className="w-20 lg:w-64 bg-gray-900 border-r border-gray-800 flex flex-col justify-between flex-shrink-0">
         <div>
           <div className="h-16 flex items-center justify-center lg:justify-start lg:px-6 border-b border-gray-800 font-bold text-lg"><span className="text-primary-500 mr-2">AI</span> Team</div>
           <nav className="p-4 space-y-2">
