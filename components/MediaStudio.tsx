@@ -6,12 +6,13 @@ import { Icons } from './Icon';
 interface MediaStudioProps {
   mediaList: GeneratedMedia[];
   setMediaList: React.Dispatch<React.SetStateAction<GeneratedMedia[]>>;
+  onCreateTask?: (media: GeneratedMedia) => void;
 }
 
 type StudioTab = 'image' | 'video' | 'gallery';
 type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
 
-export const MediaStudio: React.FC<MediaStudioProps> = ({ mediaList, setMediaList }) => {
+export const MediaStudio: React.FC<MediaStudioProps> = ({ mediaList, setMediaList, onCreateTask }) => {
   const [activeTab, setActiveTab] = useState<StudioTab>('image');
   
   // Image Gen State
@@ -25,7 +26,6 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ mediaList, setMediaLis
   const [vidPrompt, setVidPrompt] = useState('');
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [isGeneratingVid, setIsGeneratingVid] = useState(false);
-  const [veoKeyStatus, setVeoKeyStatus] = useState<'unchecked' | 'valid' | 'invalid'>('unchecked');
 
   // Helper: File to Base64
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string | null) => void) => {
@@ -65,34 +65,9 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ mediaList, setMediaLis
     }
   };
 
-  const checkVeoKey = async () => {
-    try {
-        // @ts-ignore
-        if (window.aistudio && window.aistudio.hasSelectedApiKey) {
-            // @ts-ignore
-            const hasKey = await window.aistudio.hasSelectedApiKey();
-            if (!hasKey) {
-                 // @ts-ignore
-                 await window.aistudio.openSelectKey();
-            }
-            setVeoKeyStatus('valid');
-        } else {
-            // Fallback for environments where window.aistudio might not be injected but process.env is used
-            setVeoKeyStatus('valid');
-        }
-    } catch (e) {
-        console.error("Erro verificando chave Veo", e);
-    }
-  };
-
   const handleGenerateVideo = async () => {
     if (!vidPrompt) return;
     
-    // Ensure key check
-    if (veoKeyStatus === 'unchecked') {
-        await checkVeoKey();
-    }
-
     setIsGeneratingVid(true);
     try {
         const url = await generateVideo(vidPrompt, sourceImage || undefined);
@@ -291,6 +266,15 @@ export const MediaStudio: React.FC<MediaStudioProps> = ({ mediaList, setMediaLis
                                     <div className="flex items-center justify-between mt-2">
                                         <span className="text-[10px] text-gray-500">{media.modelUsed}</span>
                                         <div className="flex gap-2">
+                                            {onCreateTask && (
+                                                <button
+                                                    onClick={() => onCreateTask(media)}
+                                                    className="p-1.5 bg-blue-900/30 text-blue-400 rounded hover:bg-blue-900/50"
+                                                    title="Criar Demanda com esta Mídia"
+                                                >
+                                                    <Icons.Board />
+                                                </button>
+                                            )}
                                             {media.type === 'image' && (
                                                 <button 
                                                     onClick={() => sendToVideo(media.url)}

@@ -1,5 +1,5 @@
-import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
-import { Agent, ChatMessage, DriveFile } from '../types';
+import { GoogleGenAI, Chat, GenerateContentResponse, Type } from "@google/genai";
+import { Agent, ChatMessage, DriveFile, Task, AgentRole } from '../types';
 
 const getClient = () => {
   const apiKey = process.env.API_KEY;
@@ -77,6 +77,19 @@ export const streamChatResponse = async (
     onChunk(`\n\n[ERRO: Falha ao processar com o modelo ${agent.model}. Verifique a API Key.]`);
     throw error;
   }
+};
+
+/**
+ * AI Helper to Improve Task Briefing
+ */
+export const enhanceBriefing = async (currentBrief: string): Promise<string> => {
+    if (!currentBrief.trim()) return "";
+    const ai = getClient();
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Você é um gerente de marketing sênior. Melhore o seguinte briefing de tarefa para que fique mais claro, acionável e profissional para um time de criativos. Mantenha a essência, mas adicione estrutura. Briefing original: "${currentBrief}"`,
+    });
+    return response.text || currentBrief;
 };
 
 /**
@@ -193,3 +206,59 @@ export const generateVideo = async (
     const blob = await videoResponse.blob();
     return URL.createObjectURL(blob);
 };
+
+// AI DISTRIBUTION LOGIC FOR KANBAN
+export const distributeBacklogTasks = async (
+  tasks: Task[], 
+  agents: Agent[]
+): Promise<{ taskId: string, agentId: string, reason: string }[]> => {
+    const ai = getClient();
+    
+    const agentList = agents.map(a => ({ id: a.id, name: a.name, role: a.role, description: a.description }));
+    const taskList = tasks.map(t => ({ id: t.id, title: t.title, description: t.description }));
+
+    const prompt = `
+      Você é Sofia, a Gestora de Projetos.
+      Analise as seguintes tarefas do backlog:
+      ${JSON.stringify(taskList)}
+
+      E a seguinte equipe de agentes especialistas:
+      ${JSON.stringify(agentList)}
+
+      Sua missão: Atribuir cada tarefa ao agente MAIS capacitado para realizá-la com base em seu papel (Role) e descrição.
+      Se a tarefa for genérica, atribua ao "Gestor" ou "Planejador".
+      Se for vídeo, para o Roteirista. Se for imagem, Carrosséis ou Posts, para seus respectivos especialistas.
+
+      Retorne APENAS um JSON com o array de atribuições.
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+                type: Type.ARRAY,
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        taskId: { type: Type.STRING },
+                        agentId: { type: Type.STRING },
+                        reason: { type: Type.STRING }
+                    }
+                }
+            }
+        }
+    });
+
+    let jsonText = response.text || "[]";
+    // Clean up potential markdown formatting that Gemini might output despite JSON mode
+    jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    try {
+        return JSON.parse(jsonText);
+    } catch (e) {
+        console.error("Failed to parse JSON distribution", e);
+        return [];
+    }
+}

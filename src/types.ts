@@ -13,13 +13,13 @@ export type GeminiModelType =
   | 'gemini-2.5-flash-lite-latest' 
   | 'gemini-3-pro-preview';
 
-export type FileSource = 'upload' | 'gdrive' | 'gmail' | 'sheets' | 'docs';
+export type FileSource = 'upload' | 'gdrive' | 'gmail' | 'sheets' | 'docs' | 'github';
 
 export interface DriveFile {
   id: string;
   name: string;
-  content: string; // Extracted text content
-  type: 'text' | 'csv' | 'json' | 'pdf' | 'email' | 'doc' | 'sheet';
+  content: string;
+  type: 'text' | 'csv' | 'json' | 'pdf' | 'email' | 'doc' | 'sheet' | 'md';
   source: FileSource;
   lastModified: Date;
 }
@@ -32,7 +32,7 @@ export interface Agent {
   model: GeminiModelType;
   systemInstruction: string;
   description: string;
-  files: DriveFile[]; // Knowledge base specific to this agent
+  files: DriveFile[];
 }
 
 export interface ChatMessage {
@@ -40,11 +40,10 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: Date;
-  senderName?: string; // If model, which agent sent it
+  senderName?: string;
   isThinking?: boolean;
 }
 
-// Internal Team Chat Types
 export interface TeamMessage {
     id: string;
     senderId: string;
@@ -55,7 +54,6 @@ export interface TeamMessage {
     read: boolean;
 }
 
-// Media Studio Types
 export type MediaType = 'image' | 'video';
 
 export interface GeneratedMedia {
@@ -66,10 +64,9 @@ export interface GeneratedMedia {
   timestamp: Date;
   aspectRatio?: string;
   modelUsed: string;
-  refImage?: string; // Base64 of reference image if used
+  refImage?: string;
 }
 
-// Kanban / Demand Types - ENHANCED FOR MLABS STYLE
 export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'review' | 'scheduled' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type SocialChannel = 'instagram' | 'linkedin' | 'tiktok' | 'youtube' | 'blog';
@@ -85,12 +82,8 @@ export interface Task {
   mediaUrl?: string; 
   scheduledDate?: Date;
   approvalStatus?: 'pending' | 'approved' | 'rejected';
-  
-  // Client Data for External Approval
   clientName?: string;
   clientEmail?: string;
-  externalLinkToken?: string;
-  
   createdAt: Date;
 }
 
@@ -98,7 +91,7 @@ export interface Notification {
     id: string;
     title: string;
     message: string;
-    type: 'info' | 'success' | 'warning' | 'email'; // Added 'email' type
+    type: 'info' | 'success' | 'warning' | 'email';
     read: boolean;
     timestamp: Date;
 }
